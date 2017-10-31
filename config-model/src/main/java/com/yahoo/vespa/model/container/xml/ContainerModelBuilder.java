@@ -11,6 +11,7 @@ import com.yahoo.config.model.api.ConfigServerSpec;
 import com.yahoo.config.model.application.provider.IncludeDirs;
 import com.yahoo.config.model.builder.xml.ConfigModelBuilder;
 import com.yahoo.config.model.builder.xml.ConfigModelId;
+import com.yahoo.config.model.deploy.DeployProperties;
 import com.yahoo.config.model.producer.AbstractConfigProducer;
 import com.yahoo.config.provision.Capacity;
 import com.yahoo.config.provision.ClusterMembership;
@@ -18,6 +19,7 @@ import com.yahoo.config.provision.ClusterSpec;
 import com.yahoo.config.provision.Environment;
 import com.yahoo.config.provision.NodeType;
 import com.yahoo.container.jdisc.config.MetricDefaultsConfig;
+import com.yahoo.log.LogLevel;
 import com.yahoo.search.rendering.RendererRegistry;
 import com.yahoo.text.XML;
 import com.yahoo.vespa.defaults.Defaults;
@@ -64,6 +66,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
@@ -92,6 +95,8 @@ public class ContainerModelBuilder extends ConfigModelBuilder<ContainerModel> {
 
     private static final String xmlRendererId = RendererRegistry.xmlRendererId.getName();
     private static final String jsonRendererId = RendererRegistry.jsonRendererId.getName();
+
+    private static final Logger logger = Logger.getLogger(ContainerCluster.class.getName());
 
     public ContainerModelBuilder(boolean standaloneBuilder, Networking networking) {
         super(ContainerModel.class);
@@ -162,7 +167,7 @@ public class ContainerModelBuilder extends ConfigModelBuilder<ContainerModel> {
         addLegacyFilters(spec, cluster);  // TODO: Remove for Vespa 7
 
         // Athenz copper argos
-        addIdentity(spec, cluster, context.getDeployState().getProperties().configServerSpecs());
+        addIdentity(spec, cluster, context.getDeployState().getProperties());
 
         //TODO: overview handler, see DomQrserverClusterBuilder
     }
@@ -690,20 +695,21 @@ public class ContainerModelBuilder extends ConfigModelBuilder<ContainerModel> {
         }
     }
 
-    private void addIdentity(Element element, ContainerCluster cluster, List<ConfigServerSpec> configServerSpecs) {
+    private void addIdentity(Element element, ContainerCluster cluster, DeployProperties deployProperties) {
         Element identityElement = XML.getChild(element, "identity");
         if(identityElement != null) {
             String domain = XML.getValue(XML.getChild(identityElement, "domain"));
             String service = XML.getValue(XML.getChild(identityElement, "service"));
 
+            // Log to see if propagated correctly
+            logger.log(LogLevel.INFO, String.format("loadBalancerAddress: %s", deployProperties.loadBalancerAddress()));
+
             // TODO: Inject the load balancer address. For now only add first configserver
-            String cfgHostName = configServerSpecs.stream().findFirst().map(ConfigServerSpec::getHostName)
+            String cfgHostName = deployProperties.configServerSpecs().stream().findFirst().map(ConfigServerSpec::getHostName)
                     .orElse(""); // How to test this?
 
             Identity identity = new Identity(domain.trim(), service.trim(), cfgHostName);
             cluster.addComponent(identity);
-
-
         }
     }
 
