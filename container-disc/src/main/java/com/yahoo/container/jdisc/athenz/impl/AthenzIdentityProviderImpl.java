@@ -20,8 +20,6 @@ public final class AthenzIdentityProviderImpl extends AbstractComponent implemen
 
     private InstanceIdentity instanceIdentity;
 
-    private final String dnsSuffix;
-    private final String providerUniqueId;
     private final String domain;
     private final String service;
 
@@ -39,8 +37,8 @@ public final class AthenzIdentityProviderImpl extends AbstractComponent implemen
         this.service = config.service();
         String rawDocument = serviceProviderApi.getSignedIdentityDocument();
         SignedIdentityDocument document = objectMapper.readValue(rawDocument, SignedIdentityDocument.class);
-        this.dnsSuffix = document.dnsSuffix;
-        this.providerUniqueId = document.providerUniqueId;
+        String dnsSuffix = document.dnsSuffix;
+        String providerUniqueId = document.providerUniqueId;
 
         InstanceRegisterInformation instanceRegisterInformation = new InstanceRegisterInformation(
                 document.providerService,
